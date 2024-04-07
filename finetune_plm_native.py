@@ -23,13 +23,15 @@ def define_argparser():
 
     p.add_argument('--model_fn', required=True)
     p.add_argument('--train_fn', required=True)
-    # Recommended model list:
+    # Recommended model list: <- models (PLM names) that other people have uploaded..
+                              # Go to Hugging Face website and click on "Models."
     # - kykim/bert-kor-base
     # - kykim/albert-kor-base
     # - beomi/kcbert-base
     # - beomi/kcbert-large
-    p.add_argument('--pretrained_model_name', type=str, default='beomi/kcbert-base')
-    p.add_argument('--use_albert', action='store_true')
+    p.add_argument('--pretrained_model_name', type=str, default='beomi/kcbert-base') # This line downloads the designated model
+                                                                                     # and execute it.
+    p.add_argument('--use_albert', action='store_true') # the model that matches the PLM we have selected above..
     
     p.add_argument('--gpu_id', type=int, default=-1)
     p.add_argument('--verbose', type=int, default=2)
@@ -37,15 +39,23 @@ def define_argparser():
     p.add_argument('--batch_size', type=int, default=32)
     p.add_argument('--n_epochs', type=int, default=5)
 
-    p.add_argument('--lr', type=float, default=5e-5)
-    p.add_argument('--warmup_ratio', type=float, default=.2)
+    p.add_argument('--lr', type=float, default=5e-5) # when the warm up ends
+                                                     # The default value is good enough.
+    p.add_argument('--warmup_ratio', type=float, default=.2) # The default value is good enough.
+                                                             # It is applied up to the total number of iterations X warmup_ratio.
+                                                             # ex. num_epochs -> 2 / mini batches -> 200 / warmup_ratio -> 0.2
+                                                             # 2 X 200 X 0.2 = 80 -> Warm up from the beginning to the 80th iteration.
     p.add_argument('--adam_epsilon', type=float, default=1e-8)
     # If you want to use RAdam, I recommend to use LR=1e-4.
-    # Also, you can set warmup_ratio=0.
+    # Also, you can set warmup_ratio=0, which means that RADAM does not use warm-up process.
     p.add_argument('--use_radam', action='store_true')
     p.add_argument('--valid_ratio', type=float, default=.2)
 
-    p.add_argument('--max_length', type=int, default=100)
+    p.add_argument('--max_length', type=int, default=100) # the trade off between the max_length and batch_size..
+                                                          # Note that you are advised to set the max_length more than a particular level
+                                                          # so that the trained model can be able to handle long corpora.
+                                                          # However, there is no specified optimal length in general.
+                                                          # So, refer to other codes and the consensus in communities.
 
     config = p.parse_args()
 
@@ -95,6 +105,9 @@ def get_optimizer(model, config):
         optimizer = custom_optim.RAdam(model.parameters(), lr=config.lr)
     else:
         # Prepare optimizer and schedule (linear warmup and decay)
+        # the default optimizer AdamW based on the idead of "Decoupled Weight Decay Regularization"
+        # For more info regarding AdamW, refer to the following page.
+        # https://arxiv.org/abs/1711.05101
         no_decay = ['bias', 'LayerNorm.weight']
         optimizer_grouped_parameters = [
             {
@@ -142,7 +155,9 @@ def main(config):
     model_loader = AlbertForSequenceClassification if config.use_albert else BertForSequenceClassification
     model = model_loader.from_pretrained(
         config.pretrained_model_name,
-        num_labels=len(index_to_label)
+        num_labels=len(index_to_label) # for the number of neurons in the output layer
+                                       # Note that the output (last) layer starts with randomly initialized parameters,
+                                       # which means that they are not pretrained.
     )
     optimizer = get_optimizer(model, config)
 

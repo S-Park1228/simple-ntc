@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score
 import torch
 
 from transformers import BertTokenizerFast
-from transformers import BertForSequenceClassification, AlbertForSequenceClassification, RobertaForSequenceClassification
+from transformers import BertForSequenceClassification, AlbertForSequenceClassification
 from transformers import Trainer
 from transformers import TrainingArguments
 
@@ -27,7 +27,6 @@ def define_argparser():
     # - beomi/kcbert-large
     p.add_argument('--pretrained_model_name', type=str, default='beomi/kcbert-base')
     p.add_argument('--use_albert', action='store_true')
-    p.add_argument('--use_roberta', action='store_true')
 
     p.add_argument('--valid_ratio', type=float, default=.2)
     p.add_argument('--batch_size_per_device', type=int, default=32)
@@ -70,6 +69,7 @@ def get_datasets(fn, valid_ratio=.2):
     return train_dataset, valid_dataset, index_to_label
 
 
+# Compare the 'main' function below with that in finetune_plm_native.py.
 def main(config):
     # Get pretrained tokenizer.
     tokenizer = BertTokenizerFast.from_pretrained(config.pretrained_model_name)
@@ -93,14 +93,7 @@ def main(config):
     )
 
     # Get pretrained model with specified softmax layer.
-    assert not (config.use_albert and config.use_roberta), 'Only one of use_albert and use_roberta can be True.'
-    if config.use_albert:
-        model_loader = AlbertForSequenceClassification
-    elif config.use_roberta:
-        model_loader = RobertaForSequenceClassification
-    else:
-        model_loader = BertForSequenceClassification
-
+    model_loader = AlbertForSequenceClassification if config.use_albert else BertForSequenceClassification
     model = model_loader.from_pretrained(
         config.pretrained_model_name,
         num_labels=len(index_to_label)
@@ -113,9 +106,8 @@ def main(config):
         per_device_eval_batch_size=config.batch_size_per_device,
         warmup_steps=n_warmup_steps,
         weight_decay=0.01,
-        fp16=True,
+        fp16=True, # Automatic Mixed Precision (AMP) on/off
         evaluation_strategy='epoch',
-        save_strategy='epoch',
         logging_steps=n_total_iterations // 100,
         save_steps=n_total_iterations // config.n_epochs,
         load_best_model_at_end=True,

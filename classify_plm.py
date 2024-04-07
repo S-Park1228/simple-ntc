@@ -4,6 +4,7 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchtext import data
 
 from transformers import BertTokenizerFast
 from transformers import BertForSequenceClassification, AlbertForSequenceClassification
@@ -17,8 +18,10 @@ def define_argparser():
 
     p.add_argument('--model_fn', required=True)
     p.add_argument('--gpu_id', type=int, default=-1)
-    p.add_argument('--batch_size', type=int, default=256)
-    p.add_argument('--top_k', type=int, default=1)
+    p.add_argument('--batch_size', type=int, default=256) # It is fine to use the default batch size of 256
+                                                          # because it is not training mode.
+    p.add_argument('--top_k', type=int, default=1) # Set this argument based on your purpose of training.
+                                                   # For the classification with two classes, set it as 1.
 
     config = p.parse_args()
 
@@ -87,7 +90,7 @@ def main(config):
             y_hats += [y_hat]
         # Concatenate the mini-batch wise result
         y_hats = torch.cat(y_hats, dim=0)
-        # |y_hats| = (len(lines), n_classes)
+        # |y_hats| = (len(lines), n_classes) <- len(lines) = batch_size X (num_mini_batches - 1) + the last mini batch's size
 
         probs, indice = y_hats.cpu().topk(config.top_k)
         # |indice| = (len(lines), top_k)
