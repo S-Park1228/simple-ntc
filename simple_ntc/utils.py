@@ -8,14 +8,9 @@ def read_text(fn):
                 # The file should have tab delimited two columns.
                 # First column indicates label field,
                 # and second column indicates text field.
-                try:
-                    label, text = line.strip().split('\t')
-                    labels += [label]
-                    texts += [text]
-                except Exception as e:
-                    print(e)
-                    print(line)
-                    continue
+                label, text = line.strip().split('\t')
+                labels += [label]
+                texts += [text]
 
     return labels, texts
 

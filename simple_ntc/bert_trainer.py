@@ -20,7 +20,7 @@ class EngineForBert(MyEngine):
         super().__init__(func, model, crit, optimizer, config)
 
     @staticmethod
-    def train(engine, mini_batch):
+    def train(engine, mini_batch): # process function for PyTorch Ignite Engine
         # You have to reset the gradients of all model parameters
         # before to take another step in gradient descent.
         engine.model.train() # Because we assign model as class variable, we can easily access to it.
@@ -31,10 +31,14 @@ class EngineForBert(MyEngine):
         mask = mini_batch['attention_mask']
         mask = mask.to(engine.device)
 
-        x = x[:, :engine.config.max_length]
+        x = x[:, :engine.config.max_length] # The size of x would be either (batch_size, length, 1) or (batch_size, length).
+                                            # So, we must slice x in terms of the length dimension.
+                                            # Just in case the length of x is larger than the max_length.
 
         # Take feed-forward
-        y_hat = engine.model(x, attention_mask=mask).logits
+        y_hat = engine.model(x, attention_mask=mask).logits # |y_hat| = (batch_size, num_classes)
+                                                            # Note that the criterion function is cross entropy in this case.
+                                                            # Thus, we need to apply logits method before calculating the loss.
 
         loss = engine.crit(y_hat, y)
         loss.backward()
@@ -61,7 +65,7 @@ class EngineForBert(MyEngine):
         }
 
     @staticmethod
-    def validate(engine, mini_batch):
+    def validate(engine, mini_batch): # process function for PyTorch Ignite Engine
         engine.model.eval()
 
         with torch.no_grad():
@@ -99,11 +103,11 @@ class BertTrainer(Trainer):
         train_loader, valid_loader,
     ):
         train_engine = EngineForBert(
-            EngineForBert.train,
+            EngineForBert.train, # process function
             model, crit, optimizer, scheduler, self.config
         )
         validation_engine = EngineForBert(
-            EngineForBert.validate,
+            EngineForBert.validate, # process function
             model, crit, optimizer, scheduler, self.config
         )
 
